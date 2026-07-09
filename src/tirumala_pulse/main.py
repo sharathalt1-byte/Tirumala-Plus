@@ -1,21 +1,30 @@
-from tirumala_pulse.database.connection import supabase
+from pprint import pprint
+
+from tirumala_pulse.services.etl_service import run
+from tirumala_pulse.parsers.statistics_parser import StatisticsParser
 
 
 def main():
 
-    print("Connecting to Supabase...")
+    print("===================================")
+    print(" Tirumala Pulse ETL")
+    print("===================================\n")
 
-    response = (
-        supabase
-        .table("daily_statistics")
-        .select("*")
-        .limit(1)
-        .execute()
-    )
+    posts = run()
 
-    print("✅ Connected Successfully!")
+    statistics_posts = [
+        p
+        for p in posts
+        if StatisticsParser.is_statistics_post(p)
+    ]
 
-    print(response.data)
+    print(f"Statistics Posts Found : {len(statistics_posts)}\n")
+
+    for post in statistics_posts:
+
+        report = StatisticsParser.parse(post)
+
+        pprint(report)
 
 
 if __name__ == "__main__":
