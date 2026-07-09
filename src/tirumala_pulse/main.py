@@ -1,8 +1,4 @@
-from tirumala_pulse.parsers.statistics_parser import StatisticsParser
-from tirumala_pulse.repositories.daily_statistics_repository import (
-    DailyStatisticsRepository,
-)
-from tirumala_pulse.services.etl_service import run
+from tirumala_pulse.services.etl_service import ETLService
 
 
 def main():
@@ -11,25 +7,9 @@ def main():
     print(" Tirumala Pulse ETL")
     print("===================================\n")
 
-    repository = DailyStatisticsRepository()
+    etl = ETLService()
 
-    posts = run()
-
-    statistics_posts = [
-        post
-        for post in posts
-        if StatisticsParser.is_statistics_post(post)
-    ]
-
-    print(f"Statistics Posts Found : {len(statistics_posts)}\n")
-
-    for post in statistics_posts:
-
-        statistics = StatisticsParser.parse(post)
-
-        print(statistics)
-
-        repository.insert(statistics)
+    etl.run()
 
 
 if __name__ == "__main__":
