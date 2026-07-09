@@ -1,14 +1,15 @@
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional
 
 
 @dataclass
 class DailyStatistics:
     """
-    Represents one day's Tirumala statistics.
+    Represents a single day's Tirumala statistics.
     """
 
-    report_date: str
+    report_date: date
 
     pilgrims: Optional[int] = None
     tonsures: Optional[int] = None
@@ -22,13 +23,14 @@ class DailyStatistics:
     source: str = "TTD Official"
     parser_version: str = "1.0"
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
-        Convert the object into a dictionary for database insertion.
+        Convert the model into a JSON-serializable dictionary
+        suitable for Supabase.
         """
 
         return {
-            "report_date": self.report_date,
+            "report_date": self.report_date.strftime("%Y-%m-%d"),
             "pilgrims": self.pilgrims,
             "tonsures": self.tonsures,
             "hundi_amount_rupees": self.hundi_amount_rupees,
@@ -38,10 +40,11 @@ class DailyStatistics:
             "waiting_compartments": self.waiting_compartments,
             "darshan_time_hours": self.darshan_time_hours,
             "source": self.source,
-            "parser_version": self.parser_version
+            "parser_version": self.parser_version,
         }
 
     def __str__(self):
+
         return (
             f"DailyStatistics("
             f"report_date={self.report_date}, "

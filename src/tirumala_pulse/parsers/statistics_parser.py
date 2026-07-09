@@ -1,5 +1,9 @@
 import re
+from datetime import datetime
+
 from bs4 import BeautifulSoup
+
+from tirumala_pulse.models.daily_statistics import DailyStatistics
 
 
 class StatisticsParser:
@@ -27,7 +31,7 @@ class StatisticsParser:
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE | re.DOTALL
         )
 
         if match:
@@ -44,73 +48,101 @@ class StatisticsParser:
         return int(value.replace(",", ""))
 
     @staticmethod
+    def _lac_to_number(value):
+
+        if value is None:
+            return None
+
+        return round(float(value) * 100000)
+
+    @staticmethod
+    def _crore_to_number(value):
+
+        if value is None:
+            return None
+
+        return round(float(value) * 10000000)
+
+    @staticmethod
     def parse(post):
 
         text = StatisticsParser.extract_text(post)
 
-        report = {}
-
-        report["report_date"] = StatisticsParser._extract(
+        report_date = StatisticsParser._extract(
             r"darshan on (\d{2}\.\d{2}\.\d{4})",
             text
         )
 
-        report["pilgrims"] = StatisticsParser._number(
+        report_date = datetime.strptime(
+            report_date,
+            "%d.%m.%Y"
+        ).date()
+
+        pilgrims = StatisticsParser._number(
             StatisticsParser._extract(
                 r"darshan.*?:\s*([\d,]+)",
                 text
             )
         )
 
-        report["tonsures"] = StatisticsParser._number(
+        tonsures = StatisticsParser._number(
             StatisticsParser._extract(
                 r"Tonsures:\s*([\d,]+)",
                 text
             )
         )
 
-        hundi = StatisticsParser._extract(
-            r"Hundi.*?:\s*([\d.]+)",
-            text
+        hundi = StatisticsParser._crore_to_number(
+            StatisticsParser._extract(
+                r"Hundi.*?:\s*([\d.]+)",
+                text
+            )
         )
 
-        if hundi:
-            report["hundi_amount_rupees"] = int(float(hundi) * 10000000)
-
-        laddu = StatisticsParser._extract(
-            r"Laddu.*?([\d.]+)\s*Lac",
-            text
+        laddu_sale = StatisticsParser._lac_to_number(
+            StatisticsParser._extract(
+                r"Laddu.*?([\d.]+)\s*Lac",
+                text
+            )
         )
 
-        if laddu:
-            report["laddu_sale"] = int(float(laddu) * 100000)
-
-        anna = StatisticsParser._extract(
-            r"Annaprasadams.*?([\d.]+)\s*Lac",
-            text
+        annaprasadams = StatisticsParser._lac_to_number(
+            StatisticsParser._extract(
+                r"Annaprasadams.*?([\d.]+)\s*Lac",
+                text
+            )
         )
 
-        if anna:
-            report["annaprasadams"] = int(float(anna) * 100000)
-
-        report["medical_treatment"] = StatisticsParser._number(
+        medical = StatisticsParser._number(
             StatisticsParser._extract(
                 r"Medical treatment.*?([\d,]+)",
                 text
             )
         )
 
-        report["waiting_compartments"] = StatisticsParser._extract(
+        waiting = StatisticsParser._extract(
             r"Waiting Compartments.*?([^\n]+)",
             text
         )
 
+        if waiting:
+            waiting = waiting.replace("…", "").strip()
+
         darshan = StatisticsParser._extract(
-            r"(\d+)\s*H",
+            r"Approx.*?(\d+)\s*H",
             text
         )
 
-        if darshan:
-            report["darshan_time_hours"] = int(darshan)
+        darshan_hours = int(darshan) if darshan else None
 
-        return report
+        return DailyStatistics(
+            report_date=report_date,
+            pilgrims=pilgrims,
+            tonsures=tonsures,
+            hundi_amount_rupees=hundi,
+            laddu_sale=laddu_sale,
+            annaprasadams=annaprasadams,
+            medical_treatment=medical,
+            waiting_compartments=waiting,
+            darshan_time_hours=darshan_hours
+        )
