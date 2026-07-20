@@ -21,7 +21,11 @@ class TTDNewsAPI:
     def get_posts(self, page=1):
         """
         Retrieve one page of posts from the TTD News API.
-        Returns an empty list when there are no more pages.
+
+        Returns an empty list when:
+        - The requested page does not exist (400/404)
+        - The response is not valid JSON
+        - The API returns an unexpected payload
         """
 
         params = {
@@ -37,15 +41,32 @@ class TTDNewsAPI:
             verify=False,
         )
 
-        # WordPress returns HTTP 400 when the requested page
-        # is beyond the last available page.
-        if response.status_code == 400:
+        # WordPress returns 400/404 when the requested page
+        # is beyond the available pagination.
+        if response.status_code in (400, 404):
             logger.info("No more pages available. Ending backfill.")
             return []
 
         response.raise_for_status()
 
-        return response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            logger.warning(
+                "Received a non-JSON response for page %s. Ending backfill.",
+                page,
+            )
+            logger.debug("Response body: %s", response.text[:500])
+            return []
+
+        if not isinstance(data, list):
+            logger.warning(
+                "Unexpected API response for page %s. Ending backfill.",
+                page,
+            )
+            return []
+
+        return data
 
     def iter_pages(self, start_page=1):
         """
@@ -87,7 +108,6 @@ class TTDNewsAPI:
         total_posts = 0
 
         for _, posts in self.iter_pages(start_page):
-
             for post in posts:
                 total_posts += 1
                 yield post
