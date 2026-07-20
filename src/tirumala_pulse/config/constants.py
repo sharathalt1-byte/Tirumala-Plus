@@ -20,4 +20,4 @@ STATUS_FAILED = "FAILED"
 # API
 # ==========================================================
 
-POSTS_PER_PAGE = 5
+POSTS_PER_PAGE = 100

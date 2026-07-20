@@ -40,15 +40,45 @@ class StatisticsParser:
         return None
 
     @staticmethod
-    def _number(value):
+    def _clean_numeric(value):
+        """
+        Normalizes numeric strings.
+
+        Examples:
+            "..2.94" -> "2.94"
+            "...4.05" -> "4.05"
+            "4,567" -> "4567"
+            " 2.94 " -> "2.94"
+        """
 
         if value is None:
             return None
 
-        return int(value.replace(",", ""))
+        value = value.strip()
+
+        value = value.replace(",", "")
+
+        match = re.search(r"\d+(?:\.\d+)?", value)
+
+        if match:
+            return match.group(0)
+
+        return None
+
+    @staticmethod
+    def _number(value):
+
+        value = StatisticsParser._clean_numeric(value)
+
+        if value is None:
+            return None
+
+        return int(float(value))
 
     @staticmethod
     def _lac_to_number(value):
+
+        value = StatisticsParser._clean_numeric(value)
 
         if value is None:
             return None
@@ -57,6 +87,8 @@ class StatisticsParser:
 
     @staticmethod
     def _crore_to_number(value):
+
+        value = StatisticsParser._clean_numeric(value)
 
         if value is None:
             return None
@@ -87,28 +119,28 @@ class StatisticsParser:
 
         tonsures = StatisticsParser._number(
             StatisticsParser._extract(
-                r"Tonsures:\s*([\d,]+)",
+                r"Tonsures\s*:\s*([\d,]+)",
                 text
             )
         )
 
         hundi = StatisticsParser._crore_to_number(
             StatisticsParser._extract(
-                r"Hundi.*?:\s*([\d.]+)",
+                r"Hundi.*?:\s*([^\n]+)",
                 text
             )
         )
 
         laddu_sale = StatisticsParser._lac_to_number(
             StatisticsParser._extract(
-                r"Laddu.*?([\d.]+)\s*Lac",
+                r"Laddu.*?([^\n]+?)\s*Lac",
                 text
             )
         )
 
         annaprasadams = StatisticsParser._lac_to_number(
             StatisticsParser._extract(
-                r"Annaprasadams.*?([\d.]+)\s*Lac",
+                r"Annaprasadams.*?([^\n]+?)\s*Lac",
                 text
             )
         )
@@ -126,7 +158,7 @@ class StatisticsParser:
         )
 
         if waiting:
-            waiting = waiting.replace("…", "").strip()
+            waiting = waiting.replace("…", "").replace(".", "").strip()
 
         darshan = StatisticsParser._extract(
             r"Approx.*?(\d+)\s*H",
