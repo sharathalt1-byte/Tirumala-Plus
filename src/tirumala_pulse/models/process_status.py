@@ -1,0 +1,16 @@
+from enum import Enum
+
+
+class ProcessStatus(str, Enum):
+
+    SUCCESS = "SUCCESS"
+
+    DUPLICATE = "DUPLICATE"
+
+    PARSER_ERROR = "PARSER_ERROR"
+
+    DATABASE_ERROR = "DATABASE_ERROR"
+
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+
+    UNKNOWN_ERROR = "UNKNOWN_ERROR"

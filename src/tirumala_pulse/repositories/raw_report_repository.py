@@ -2,7 +2,6 @@ from tirumala_pulse.database.connection import supabase
 from tirumala_pulse.models.raw_report import RawReport
 from tirumala_pulse.utils.logger import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -14,8 +13,7 @@ class RawReportRepository:
         """
 
         response = (
-            supabase
-            .table("raw_reports")
+            supabase.table("raw_reports")
             .select("id")
             .eq("report_date", report_date.strftime("%Y-%m-%d"))
             .limit(1)
@@ -40,12 +38,7 @@ class RawReportRepository:
             report.report_date,
         )
 
-        response = (
-            supabase
-            .table("raw_reports")
-            .insert(report.to_dict())
-            .execute()
-        )
+        response = supabase.table("raw_reports").insert(report.to_dict()).execute()
 
         logger.info(
             "Successfully saved raw report for %s.",

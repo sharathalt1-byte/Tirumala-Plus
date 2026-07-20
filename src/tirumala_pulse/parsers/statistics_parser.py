@@ -20,19 +20,12 @@ class StatisticsParser:
 
         soup = BeautifulSoup(html, "html.parser")
 
-        return soup.get_text(
-            separator="\n",
-            strip=True
-        )
+        return soup.get_text(separator="\n", strip=True)
 
     @staticmethod
     def _extract(pattern, text):
 
-        match = re.search(
-            pattern,
-            text,
-            re.IGNORECASE | re.DOTALL
-        )
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
 
         if match:
             return match.group(1).strip()
@@ -101,69 +94,41 @@ class StatisticsParser:
         text = StatisticsParser.extract_text(post)
 
         report_date = StatisticsParser._extract(
-            r"darshan on (\d{2}\.\d{2}\.\d{4})",
-            text
+            r"darshan on (\d{2}\.\d{2}\.\d{4})", text
         )
 
-        report_date = datetime.strptime(
-            report_date,
-            "%d.%m.%Y"
-        ).date()
+        report_date = datetime.strptime(report_date, "%d.%m.%Y").date()
 
         pilgrims = StatisticsParser._number(
-            StatisticsParser._extract(
-                r"darshan.*?:\s*([\d,]+)",
-                text
-            )
+            StatisticsParser._extract(r"darshan.*?:\s*([\d,]+)", text)
         )
 
         tonsures = StatisticsParser._number(
-            StatisticsParser._extract(
-                r"Tonsures\s*:\s*([\d,]+)",
-                text
-            )
+            StatisticsParser._extract(r"Tonsures\s*:\s*([\d,]+)", text)
         )
 
         hundi = StatisticsParser._crore_to_number(
-            StatisticsParser._extract(
-                r"Hundi.*?:\s*([^\n]+)",
-                text
-            )
+            StatisticsParser._extract(r"Hundi.*?:\s*([^\n]+)", text)
         )
 
         laddu_sale = StatisticsParser._lac_to_number(
-            StatisticsParser._extract(
-                r"Laddu.*?([^\n]+?)\s*Lac",
-                text
-            )
+            StatisticsParser._extract(r"Laddu.*?([^\n]+?)\s*Lac", text)
         )
 
         annaprasadams = StatisticsParser._lac_to_number(
-            StatisticsParser._extract(
-                r"Annaprasadams.*?([^\n]+?)\s*Lac",
-                text
-            )
+            StatisticsParser._extract(r"Annaprasadams.*?([^\n]+?)\s*Lac", text)
         )
 
         medical = StatisticsParser._number(
-            StatisticsParser._extract(
-                r"Medical treatment.*?([\d,]+)",
-                text
-            )
+            StatisticsParser._extract(r"Medical treatment.*?([\d,]+)", text)
         )
 
-        waiting = StatisticsParser._extract(
-            r"Waiting Compartments.*?([^\n]+)",
-            text
-        )
+        waiting = StatisticsParser._extract(r"Waiting Compartments.*?([^\n]+)", text)
 
         if waiting:
             waiting = waiting.replace("…", "").replace(".", "").strip()
 
-        darshan = StatisticsParser._extract(
-            r"Approx.*?(\d+)\s*H",
-            text
-        )
+        darshan = StatisticsParser._extract(r"Approx.*?(\d+)\s*H", text)
 
         darshan_hours = int(darshan) if darshan else None
 
@@ -176,5 +141,5 @@ class StatisticsParser:
             annaprasadams=annaprasadams,
             medical_treatment=medical,
             waiting_compartments=waiting,
-            darshan_time_hours=darshan_hours
+            darshan_time_hours=darshan_hours,
         )

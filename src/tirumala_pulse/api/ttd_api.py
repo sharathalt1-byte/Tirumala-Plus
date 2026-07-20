@@ -1,8 +1,8 @@
 import requests
 import urllib3
 
-from tirumala_pulse.config.settings import TTD_NEWS_BASE_URL
 from tirumala_pulse.config.constants import POSTS_PER_PAGE
+from tirumala_pulse.config.settings import TTD_NEWS_BASE_URL
 from tirumala_pulse.utils.logger import get_logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,6 +16,7 @@ class TTDNewsAPI:
     """
 
     def __init__(self):
+
         self.base_url = TTD_NEWS_BASE_URL
 
     def get_posts(self, page=1):
@@ -28,53 +29,55 @@ class TTDNewsAPI:
             params={
                 "page": page,
                 "per_page": POSTS_PER_PAGE,
-                "_fields": "id,date,title,link,content,categories"
+                "_fields": "id,date,title,link,content,categories",
             },
-            headers={
-                "User-Agent": "Tirumala Pulse ETL/1.0"
-            },
+            headers={"User-Agent": "Tirumala Pulse ETL/1.0"},
             timeout=30,
-            verify=False
+            verify=False,
         )
 
         response.raise_for_status()
 
         return response.json()
 
-    def iter_posts(self):
+    def iter_pages(self, start_page=1):
         """
-        Stream every post from the TTD News API.
+        Stream pages from the TTD News API.
 
-        The API's X-WP-TotalPages header is unreliable,
-        so we continue requesting pages until an empty
-        page is returned.
+        Yields:
+            tuple(page_number, posts)
         """
 
-        page = 1
-        total_posts = 0
+        page = start_page
 
         while True:
 
-            logger.info(
-                "Downloading page %s",
-                page
-            )
+            logger.info("Downloading page %s", page)
 
             posts = self.get_posts(page)
 
             if not posts:
 
-                logger.info(
-                    "No more posts found."
-                )
+                logger.info("No more posts found.")
 
                 break
 
-            logger.info(
-                "Downloaded %s posts from page %s",
-                len(posts),
-                page
-            )
+            logger.info("Downloaded %s posts from page %s", len(posts), page)
+
+            yield page, posts
+
+            page += 1
+
+    def iter_posts(self, start_page=1):
+        """
+        Stream individual posts.
+
+        Built on top of iter_pages().
+        """
+
+        total_posts = 0
+
+        for _, posts in self.iter_pages(start_page):
 
             for post in posts:
 
@@ -82,13 +85,6 @@ class TTDNewsAPI:
 
                 yield post
 
-            page += 1
+        logger.info("Historical download completed.")
 
-        logger.info(
-            "Historical download completed."
-        )
-
-        logger.info(
-            "Total posts streamed: %s",
-            total_posts
-        )
+        logger.info("Total posts streamed: %s", total_posts)

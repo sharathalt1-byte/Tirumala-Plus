@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tirumala-pulse"
+version = "1.0.0"
+description = "Daily ETL pipeline for Tirumala statistics"
+readme = "README.md"
+requires-python = ">=3.11"
+
+authors = [
+    { name = "Sharath Nakka" }
+]
+
+dependencies = [
+    "requests>=2.32,<3.0",
+    "python-dotenv>=1.1,<2.0",
+    "supabase>=2.18,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "black>=25.0",
+    "ruff>=0.12",
+]
+
+[project.scripts]
+tirumala-pulse = "tirumala_pulse.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

@@ -1,18 +1,19 @@
-from datetime import datetime
+import time
 
 from tirumala_pulse.api.ttd_api import TTDNewsAPI
-from tirumala_pulse.models.raw_report import RawReport
+from tirumala_pulse.models.checkpoint_status import CheckpointStatus
 from tirumala_pulse.parsers.statistics_parser import StatisticsParser
-from tirumala_pulse.repositories.daily_statistics_repository import (
-    DailyStatisticsRepository,
+from tirumala_pulse.repositories.checkpoint_repository import (
+    CheckpointRepository,
 )
-from tirumala_pulse.repositories.raw_report_repository import (
-    RawReportRepository,
+from tirumala_pulse.services.process_post_service import (
+    ProcessPostService,
 )
 from tirumala_pulse.utils.logger import get_logger
 
-
 logger = get_logger(__name__)
+
+PROCESS_NAME = "historical_backfill"
 
 
 class BackfillService:
@@ -21,53 +22,99 @@ class BackfillService:
 
         self.api = TTDNewsAPI()
 
-        self.raw_repository = RawReportRepository()
+        self.process_service = ProcessPostService()
 
-        self.statistics_repository = DailyStatisticsRepository()
+        self.checkpoint_repository = CheckpointRepository()
 
-    def run(self):
+    def run(self, max_pages=None, reset_checkpoint=False):
 
-        logger.info("=" * 60)
-        logger.info("Starting Historical Backfill")
-        logger.info("=" * 60)
+        start_time = time.perf_counter()
 
-        statistics_found = 0
+        if reset_checkpoint:
+            logger.info("Resetting checkpoint...")
+            self.checkpoint_repository.reset(PROCESS_NAME)
 
-        statistics_saved = 0
+        checkpoint = self.checkpoint_repository.resume(PROCESS_NAME)
 
-        for post in self.api.iter_posts():
+        if checkpoint.status == CheckpointStatus.NOT_STARTED:
 
-            if not StatisticsParser.is_statistics_post(post):
-                continue
+            logger.info("No checkpoint found.")
+            logger.info("Starting historical backfill.")
 
-            statistics_found += 1
+        else:
 
-            report_date = datetime.strptime(
-                post["date"],
-                "%Y-%m-%dT%H:%M:%S"
-            ).date()
-
-            raw_report = RawReport(
-                report_date=report_date,
-                source_url=post["link"],
-                raw_content=post["content"]["rendered"]
-            )
-
-            self.raw_repository.insert(raw_report)
-
-            statistics = StatisticsParser.parse(post)
-
-            self.statistics_repository.insert(statistics)
-
-            statistics_saved += 1
-
+            logger.info("=" * 60)
+            logger.info("Resuming Historical Backfill")
+            logger.info("=" * 60)
+            logger.info("Status              : %s", checkpoint.status.value)
+            logger.info("Resume Page         : %s", checkpoint.last_page)
+            logger.info("Posts Scanned       : %s", checkpoint.posts_scanned)
             logger.info(
-                "Historical Reports Saved : %s",
-                statistics_saved
+                "Statistics Processed: %s",
+                checkpoint.statistics_processed,
             )
 
+        self.checkpoint_repository.start(checkpoint)
+
+        pages_processed = 0
+
+        for page, posts in self.api.iter_pages(checkpoint.last_page):
+
+            logger.info("=" * 60)
+            logger.info("Processing Page %s", page)
+            logger.info("=" * 60)
+
+            processed_this_page = 0
+
+            last_statistics_date = checkpoint.last_post_date
+
+            for post in posts:
+
+                checkpoint.posts_scanned += 1
+
+                if not StatisticsParser.is_statistics_post(post):
+                    continue
+
+                result = self.process_service.process(post)
+
+                if result.success:
+
+                    checkpoint.statistics_processed += result.records_processed
+
+                    processed_this_page += 1
+
+                    last_statistics_date = result.report_date
+
+            checkpoint.last_page = page + 1
+
+            checkpoint.last_post_date = last_statistics_date
+
+            self.checkpoint_repository.update_progress(checkpoint)
+
+            pages_processed += 1
+
+            logger.info("Checkpoint saved. Next page: %s", checkpoint.last_page)
+
+            if max_pages is not None and pages_processed >= max_pages:
+
+                logger.info("Reached max_pages=%s", max_pages)
+
+                execution_time = int((time.perf_counter() - start_time) * 1000)
+
+                logger.info("Execution Time : %sms", execution_time)
+
+                return
+
+        self.checkpoint_repository.complete(checkpoint)
+
+        execution_time = int((time.perf_counter() - start_time) * 1000)
+
         logger.info("=" * 60)
-        logger.info("Historical Backfill Finished")
-        logger.info("Statistics Found : %s", statistics_found)
-        logger.info("Statistics Saved : %s", statistics_saved)
+        logger.info("Historical Backfill Completed")
         logger.info("=" * 60)
+        logger.info("Posts Scanned       : %s", checkpoint.posts_scanned)
+        logger.info(
+            "Statistics Processed: %s",
+            checkpoint.statistics_processed,
+        )
+        logger.info("Execution Time      : %sms", execution_time)

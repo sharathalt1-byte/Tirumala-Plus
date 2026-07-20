@@ -16,15 +16,10 @@ class ETLRun:
     def to_dict(self):
 
         return {
-
             "status": self.status,
-
             "records_processed": self.records_processed,
-
             "execution_time_ms": self.execution_time_ms,
-
-            "error_message": self.error_message
-
+            "error_message": self.error_message,
         }
 
     def __str__(self):

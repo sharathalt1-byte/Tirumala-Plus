@@ -16,21 +16,12 @@ class RawReport:
     def to_dict(self):
 
         return {
-
             "report_date": self.report_date.strftime("%Y-%m-%d"),
-
             "source_url": self.source_url,
-
             "raw_content": self.raw_content,
-
-            "parser_version": self.parser_version
-
+            "parser_version": self.parser_version,
         }
 
     def __str__(self):
 
-        return (
-            f"RawReport("
-            f"date={self.report_date}, "
-            f"url={self.source_url})"
-        )
+        return f"RawReport(" f"date={self.report_date}, " f"url={self.source_url})"

@@ -2,7 +2,6 @@ from tirumala_pulse.database.connection import supabase
 from tirumala_pulse.models.daily_statistics import DailyStatistics
 from tirumala_pulse.utils.logger import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -14,8 +13,7 @@ class DailyStatisticsRepository:
         """
 
         response = (
-            supabase
-            .table("daily_statistics")
+            supabase.table("daily_statistics")
             .select("id")
             .eq("report_date", report_date.strftime("%Y-%m-%d"))
             .limit(1)
@@ -45,12 +43,7 @@ class DailyStatisticsRepository:
             statistics.report_date,
         )
 
-        response = (
-            supabase
-            .table("daily_statistics")
-            .insert(payload)
-            .execute()
-        )
+        response = supabase.table("daily_statistics").insert(payload).execute()
 
         logger.info(
             "Successfully inserted report for %s.",
@@ -64,17 +57,9 @@ class DailyStatisticsRepository:
         Bulk insert multiple statistics records.
         """
 
-        rows = [
-            statistics.to_dict()
-            for statistics in statistics_list
-        ]
+        rows = [statistics.to_dict() for statistics in statistics_list]
 
-        response = (
-            supabase
-            .table("daily_statistics")
-            .insert(rows)
-            .execute()
-        )
+        response = supabase.table("daily_statistics").insert(rows).execute()
 
         logger.info(
             "Inserted %s reports into Supabase.",
