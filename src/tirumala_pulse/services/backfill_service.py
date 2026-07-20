@@ -59,6 +59,7 @@ class BackfillService:
         pages_processed = 0
 
         for page, posts in self.api.iter_pages(checkpoint.last_page):
+            logger.info("Posts received on page %s: %s", page, len(posts))
 
             logger.info("=" * 60)
             logger.info("Processing Page %s", page)

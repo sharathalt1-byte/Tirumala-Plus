@@ -21,11 +21,6 @@ class TTDNewsAPI:
     def get_posts(self, page=1):
         """
         Retrieve one page of posts from the TTD News API.
-
-        Returns an empty list when:
-        - The requested page does not exist (400/404)
-        - The response is not valid JSON
-        - The API returns an unexpected payload
         """
 
         params = {
@@ -41,10 +36,14 @@ class TTDNewsAPI:
             verify=False,
         )
 
-        # WordPress returns 400/404 when the requested page
-        # is beyond the available pagination.
+        logger.info("========================================")
+        logger.info("Request URL  : %s", response.url)
+        logger.info("HTTP Status  : %s", response.status_code)
+        logger.info("Content-Type : %s", response.headers.get("Content-Type"))
+        logger.info("========================================")
+
         if response.status_code in (400, 404):
-            logger.info("No more pages available. Ending backfill.")
+            logger.info("No more pages available.")
             return []
 
         response.raise_for_status()
@@ -52,28 +51,17 @@ class TTDNewsAPI:
         try:
             data = response.json()
         except ValueError:
-            logger.warning(
-                "Received a non-JSON response for page %s. Ending backfill.",
-                page,
-            )
-            logger.debug("Response body: %s", response.text[:500])
+            logger.error("Response is not valid JSON.")
+            logger.error("Response body:\n%s", response.text[:1000])
             return []
 
-        if not isinstance(data, list):
-            logger.warning(
-                "Unexpected API response for page %s. Ending backfill.",
-                page,
-            )
-            return []
+        logger.info("Posts returned by API: %s", len(data))
 
         return data
 
     def iter_pages(self, start_page=1):
         """
         Stream pages from the TTD News API.
-
-        Yields:
-            tuple(page_number, posts)
         """
 
         page = start_page
@@ -84,15 +72,11 @@ class TTDNewsAPI:
 
             posts = self.get_posts(page)
 
+            logger.info("Posts received on page %s: %s", page, len(posts))
+
             if not posts:
                 logger.info("No more posts found.")
                 break
-
-            logger.info(
-                "Downloaded %s posts from page %s",
-                len(posts),
-                page,
-            )
 
             yield page, posts
 
@@ -101,13 +85,12 @@ class TTDNewsAPI:
     def iter_posts(self, start_page=1):
         """
         Stream individual posts.
-
-        Built on top of iter_pages().
         """
 
         total_posts = 0
 
         for _, posts in self.iter_pages(start_page):
+
             for post in posts:
                 total_posts += 1
                 yield post
