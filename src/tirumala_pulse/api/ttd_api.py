@@ -16,25 +16,32 @@ class TTDNewsAPI:
     """
 
     def __init__(self):
-
         self.base_url = TTD_NEWS_BASE_URL
 
     def get_posts(self, page=1):
         """
         Retrieve one page of posts from the TTD News API.
+        Returns an empty list when there are no more pages.
         """
 
+        params = {
+            "page": page,
+            "per_page": POSTS_PER_PAGE,
+            "_fields": "id,date,title,link,content,categories",
+        }
+
         response = requests.get(
-            f"{self.base_url}/wp-json/wp/v2/posts",
-            params={
-                "page": page,
-                "per_page": POSTS_PER_PAGE,
-                "_fields": "id,date,title,link,content,categories",
-            },
-            headers={"User-Agent": "Tirumala Pulse ETL/1.0"},
+            self.base_url,
+            params=params,
             timeout=30,
             verify=False,
         )
+
+        # WordPress returns HTTP 400 when the requested page
+        # is beyond the last available page.
+        if response.status_code == 400:
+            logger.info("No more pages available. Ending backfill.")
+            return []
 
         response.raise_for_status()
 
@@ -57,12 +64,14 @@ class TTDNewsAPI:
             posts = self.get_posts(page)
 
             if not posts:
-
                 logger.info("No more posts found.")
-
                 break
 
-            logger.info("Downloaded %s posts from page %s", len(posts), page)
+            logger.info(
+                "Downloaded %s posts from page %s",
+                len(posts),
+                page,
+            )
 
             yield page, posts
 
@@ -80,11 +89,8 @@ class TTDNewsAPI:
         for _, posts in self.iter_pages(start_page):
 
             for post in posts:
-
                 total_posts += 1
-
                 yield post
 
         logger.info("Historical download completed.")
-
         logger.info("Total posts streamed: %s", total_posts)
